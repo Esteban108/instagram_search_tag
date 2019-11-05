@@ -12,7 +12,7 @@ PG = {
 }
 
 
-USER = "bot.6815"
-PASS = "bot1234"
+USER = ""
+PASS = ""
 
 SEARCH = "sea"
