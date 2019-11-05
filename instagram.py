@@ -1,11 +1,39 @@
+import inspect
+import logging
 from time import sleep
-
+from datetime import datetime
 from instagram_web_api.client import Client as ClientWeb
 from instagram_private_api.client import Client
 from instagram_private_api.errors import ClientThrottledError
 from data_access.pg_data_access import PgDataAccess, PgDbParams
 from settings import SLEEP, PG, USER, PASS, SEARCH
 from time import time
+from inspect import FrameInfo
+from pathlib import Path
+PATH = str(Path().absolute())
+logging.basicConfig(filename=PATH + '/' + datetime.now().strftime('%Y-%m-%d') + '_app.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+def save_log_info(msg, f: FrameInfo = None):
+    if f is not None:
+        log = f"- Archivo:{f.filename} - Fun: {f.function} - Msg:{msg}"
+        print(log)
+        logging.info(log)
+    else:
+        print("- Msg:{}".format(msg))
+        logging.info("- Msg:{}".format(msg))
+
+
+def save_log_error(msg='Error', f: FrameInfo = None, e=None):
+    if f is not None:
+        log = f"- Archivo:{f.filename} - Fun: {f.function} - Msg:{msg}"
+        print(log)
+        logging.info(log)
+    else:
+        log = "- Msg:{}".format(msg)
+        print(log)
+        logging.info(log)
+    if e is not None:
+        logging.exception(log)
 
 
 class InstagramCounter:
@@ -19,6 +47,7 @@ class InstagramCounter:
             self.db_access = PgDataAccess(self.db_params)
             self.tag_id = self.save_tag()
         except Exception as ex:
+            save_log_error(f=inspect.stack()[0], e=ex)
             raise ex
 
     def get_items(self):
@@ -27,6 +56,7 @@ class InstagramCounter:
         if result["status"] == "ok":
             return sorted(result["items"], key=lambda k: k['pk'], reverse=True)
         else:
+            save_log_info(str(result), f=inspect.stack()[0])
             print(result)
             return []
 
@@ -55,7 +85,7 @@ class InstagramCounter:
 
     def run(self):
         time_run = time()
-        print("run extractor time")
+        save_log_info("run extractor time")
         last_save = self.get_last_id_item_save()
         aux = 0
 
@@ -63,7 +93,7 @@ class InstagramCounter:
             last_save = 0
         while True:
 
-            print(f"start new branch seconds running: {time()-time_run}")
+            save_log_info(f"start new branch seconds running: {time()-time_run}")
             items = self.get_items()
             for itm in items:
                 if itm["pk"] > last_save:
@@ -72,20 +102,20 @@ class InstagramCounter:
                     try:
                         self.save_new_post(itm)
                     except Exception as ex:
-                        print(str(ex))
+                        save_log_error(f=inspect.stack()[0], e=ex)
                         continue
-                    print(f"commit 1 post seconds running: {time()-time_run}")
+                    save_log_info(f"commit 1 post seconds running: {time()-time_run}")
                 else:
                     break
             if aux > last_save:
                 last_save = aux
-            print(f"end branch seconds running: {time()-time_run}")
-            print("sleep")
+            save_log_info(f"end branch seconds running: {time()-time_run}")
+            save_log_info("sleep")
             sleep(SLEEP)
 
 
 if __name__ == "__main__":
-    print("start process")
+    save_log_info("start process")
     ig = InstagramCounter(USER, PASS, SEARCH, PG)
-    print("done created class")
+    save_log_info("done created class")
     ig.run()
